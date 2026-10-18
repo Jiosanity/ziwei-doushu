@@ -1,0 +1,10 @@
+.git
+.next
+node_modules
+.env*
+!.env.example
+docs
+*.log
+*.sqlite*
+*.zst
+._*

@@ -1,0 +1,20 @@
+services:
+  ziwei-doushu:
+    image: ziwei-doushu:local
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://192.168.31.108:3016}
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3016}:3000"
+    environment:
+      TZ: Asia/Shanghai
+      DATASET_DB_PATH: /data/readings.sqlite
+    volumes:
+      - ${DATASET_DIR:-/opt/ziwei-data/v4}:/data:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
