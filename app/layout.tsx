@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import './reconstruction.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import InnerSiteFrame from '@/components/InnerSiteFrame';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { SITE_URL } from '@/lib/site';
@@ -40,11 +42,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('ziwei-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();` }} />
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('ziwei-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else document.documentElement.setAttribute('data-theme','light');for(var k of ['paper','readingSize']){var v=localStorage.getItem('ziwei-'+k);if(v)document.documentElement.dataset[k]=v;}}catch(e){}})();` }} />
       </head>
       <body className="min-h-screen">
         <ThemeProvider>
-          {children}
+          <InnerSiteFrame>{children}</InnerSiteFrame>
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />

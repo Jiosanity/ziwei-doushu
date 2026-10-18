@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { ZiweiChart, Palace, Star } from '@/lib/ziwei/types';
 import { BRANCHES, STEMS } from '@/lib/ziwei/constants';
 import PalaceCell from './PalaceCell';
+import { getChildhoodDaXianPalace, CHILDHOOD_DAXIAN_INDEX } from '@/lib/ziwei/yunxian-context';
 import TimeNav, { type TimeView, getYearStemIndex, buildSiHuaOverlay } from './TimeNav';
 
 interface ChartBoardProps {
@@ -12,6 +13,11 @@ interface ChartBoardProps {
   onPalaceSelect?: (palace: Palace) => void;
   onSiHuaClick?: (starName: string, siHua: string, view: TimeView) => void;
   onViewChange?: (view: TimeView) => void;
+  activeView?: TimeView;
+  activeYear?: number;
+  onYearChange?: (year: number) => void;
+  hideTimeNav?: boolean;
+  activeDaXianIndex?: number;
 }
 
 const BRANCH_GRID_POS: Record<number, [number, number]> = {
@@ -53,19 +59,23 @@ function getSanFangSiZheng(branch: number): [number, number, number, number] {
 
 const ANIMATION_ORDER = [5, 6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4];
 
-export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHuaClick, onViewChange }: ChartBoardProps) {
+export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHuaClick, onViewChange, activeView, activeYear, onYearChange, hideTimeNav, activeDaXianIndex }: ChartBoardProps) {
   const [selectedBranch, setSelectedBranch] = useState<number | null>(null);
-  const [timeView, setTimeView] = useState<TimeView>('mingpan');
-  const [liunianYear, setLiunianYear] = useState<number>(new Date().getFullYear());
+  const [localView, setTimeView] = useState<TimeView>('mingpan');
+  const timeView = activeView ?? localView;
+  const [localYear, setLiunianYear] = useState<number>(new Date().getFullYear());
+  const liunianYear = activeYear ?? localYear;
 
   const palaceMap: Record<number, Palace> = {};
   chart.palaces.forEach(p => { palaceMap[p.branch] = p; });
 
   // 计算当前叠加四化数据（大限或流年）
-  const currentDx = chart.daXians[chart.currentDaXianIndex];
+  const effectiveIndex = activeDaXianIndex ?? chart.currentDaXianIndex;
+  const currentDx = chart.daXians[effectiveIndex];
+  const periodPalace = effectiveIndex === CHILDHOOD_DAXIAN_INDEX ? getChildhoodDaXianPalace(chart, liunianYear) : currentDx ? palaceMap[currentDx.palaceBranch] : null;
   const overlayData: Record<string, string> = (() => {
-    if (timeView === 'daxian' && currentDx) {
-      const dxPalace = chart.palaces.find(p => p.branch === currentDx.palaceBranch);
+    if (timeView === 'daxian' && periodPalace) {
+      const dxPalace = periodPalace;
       if (dxPalace) return buildSiHuaOverlay(dxPalace.stem);
     }
     if (timeView === 'liunian') {
@@ -91,38 +101,25 @@ export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHu
   return (
     <div className="w-full select-none">
       {/* 时间导航轴 */}
-      <TimeNav
+      {!hideTimeNav && <TimeNav
         chart={chart}
+        selectedDaXianIndex={effectiveIndex}
         view={timeView}
         liunianYear={liunianYear}
         onViewChange={view => { setTimeView(view); onViewChange?.(view); }}
-        onYearChange={setLiunianYear}
-      />
-
-      {/* 命盘标题 */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-3"
-      >
-        <div className="text-[10px] tracking-[0.5em] uppercase mb-1" style={{ color: 'var(--t-faint)' }}>
-          Zi Wei Dou Shu
-        </div>
-        <h2 className="text-sm tracking-[0.25em] font-medium" style={{ color: 'var(--t-gold)' }}>
-          {chart.birthInfo.name ? `${chart.birthInfo.name} · ` : ''}紫微斗数命盘
-        </h2>
-      </motion.div>
+        onYearChange={year => { setLiunianYear(year); onYearChange?.(year); }}
+      />}
 
       {/* 4x4 命盘网格（含 SVG 叠加层） */}
       <div
         className="grid rounded-xl overflow-hidden relative"
         style={{
           gridTemplateColumns: 'repeat(4, 1fr)',
-          gridTemplateRows: 'repeat(4, auto)',
+          gridTemplateRows: 'repeat(4, minmax(156px, auto))',
           gap: '1px',
-          background: 'var(--t-border)',
-          border: '1px solid var(--t-border)',
-          boxShadow: '0 4px 32px rgba(0,0,0,0.15)',
+          background: 'var(--bdr-med)',
+          border: '1px solid var(--bdr-med)',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.05)',
         }}
       >
         {ANIMATION_ORDER.map((branch, i) => {
@@ -130,9 +127,9 @@ export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHu
           const palace = palaceMap[branch];
           if (!palace) return null;
           return (
-            <div key={branch} style={{ gridRow: row, gridColumn: col, background: 'var(--t-bg)' }}>
+            <div key={branch} style={{ gridRow: row, gridColumn: col, background: 'var(--bg-0)' }}>
               <PalaceCell
-                palace={palace}
+                palace={{ ...palace, isCurrentDaXian: periodPalace?.branch === palace.branch }}
                 onClick={() => handlePalaceClick(branch)}
                 onStarClick={(star) => onStarSelect?.(star, palace)}
                 isSelected={selectedBranch === branch}
@@ -146,44 +143,17 @@ export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHu
           );
         })}
 
-        {/* 中央信息区 */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.5 }}
-          className="flex flex-col items-center justify-center p-4 gap-3"
-          style={{ gridRow: '2 / 4', gridColumn: '2 / 4', background: 'var(--t-bg)' }}
-        >
-          <div className="text-5xl select-none leading-none" style={{ color: 'var(--t-gold)', opacity: 0.12, filter: 'drop-shadow(0 0 12px rgba(180,120,30,0.15))' }}>
-            ☯
-          </div>
-
-          <div className="text-center space-y-1">
-            <div className="text-[9px] tracking-[0.3em] font-medium" style={{ color: 'var(--t-gold)' }}>紫微斗数</div>
-            <div className="text-[10px] space-y-0.5" style={{ color: 'var(--t-faint)' }}>
-              <div>命宫 <span style={{ color: 'var(--t-gold)', opacity: 0.7 }}>{BRANCHES[chart.mingGongBranch]}</span></div>
-              <div>身宫 <span className="text-sky-500/70">{BRANCHES[chart.shenGongBranch]}</span></div>
-              <div className="text-[9px]" style={{ color: 'var(--t-gold)', opacity: 0.75 }}>{chart.wuxingJuName}</div>
-            </div>
-          </div>
-
-          {chart.currentDaXianIndex >= 0 && (() => {
-            const dx = chart.daXians[chart.currentDaXianIndex];
-            return (
-              <div className="border border-purple-500/30 rounded-lg px-3 py-1.5 text-center"
-                style={{ background: 'rgba(147,51,234,0.06)' }}>
-                <div className="text-[8px] text-purple-500/80 mb-0.5 tracking-wider">当前大限</div>
-                <div className="text-[12px] text-purple-400 font-medium tabular-nums">{dx.startAge}–{dx.endAge}岁</div>
-                <div className="text-[9px] text-purple-500/60">{dx.palaceName}</div>
-              </div>
-            );
-          })()}
-
-          <div className="text-[8px] text-center leading-relaxed font-mono" style={{ color: 'var(--t-faint)', opacity: 0.75 }}>
-            {chart.lunarInfo.lunarYear}·{chart.lunarInfo.isLeapMonth ? '闰' : ''}
-            {chart.lunarInfo.lunarMonth}·{chart.lunarInfo.lunarDay}
-          </div>
-        </motion.div>
+        <div className="palace-center-tile" style={{ gridRow: '2 / 4', gridColumn: '2 / 4', background: 'var(--bg-0)' }}>
+          <div className="palace-center-brand">ZIWEI</div>
+          <p className="palace-center-type">{chart.yinYangGender || (chart.birthInfo.gender === 'male' ? '男命' : '女命')}　{chart.wuxingJuName}</p>
+          <div className="palace-pillars"><div><span>节气四柱</span><strong>{chart.lunarInfo.fourPillars?.join(' ') || '—'}</strong></div><div><span>非节气四柱</span><strong>{chart.lunarInfo.fourPillarsLunar?.join(' ') || '—'}</strong></div></div>
+          <div className="palace-center-meta"><span>命主 <b>{chart.mingZhu || '—'}</b></span><span>身主 <b>{chart.shenZhu || '—'}</b></span><span>命宫 <b>{BRANCHES[chart.mingGongBranch]}</b></span><span>身宫 <b>{BRANCHES[chart.shenGongBranch]}</b></span></div>
+          <p className="palace-center-date">排盘日　{chart.birthInfo.year}.{chart.birthInfo.month}.{chart.birthInfo.day}　{BRANCHES[chart.birthInfo.hour]}时</p>
+          <p className="palace-center-date">农历　{chart.lunarInfo.lunarYear}年{chart.lunarInfo.isLeapMonth ? '闰' : ''}{Math.abs(chart.lunarInfo.lunarMonth)}月{chart.lunarInfo.lunarDay}日</p>
+          {chart.birthInfo.origInput && <p className="palace-center-date">钟表时　{chart.birthInfo.origInput.year}.{chart.birthInfo.origInput.month}.{chart.birthInfo.origInput.day} {String(chart.birthInfo.origInput.clockHour).padStart(2, '0')}:{String(chart.birthInfo.origInput.clockMinute).padStart(2, '0')}</p>}
+          {currentDx && <p className="palace-center-period">{timeView === 'mingpan' ? '当前大限' : '所选大限'} <strong>{currentDx?.startAge}–{currentDx?.endAge}岁</strong> {currentDx?.palaceName}</p>}
+          {chart.birthInfo.city && <p className="palace-center-city">{chart.birthInfo.city} · 真太阳时校正</p>}
+        </div>
 
         {/* ── 三方四正 SVG 连线（绝对定位在 grid 内部，受 overflow:hidden 裁切） ── */}
         <AnimatePresence>
@@ -277,7 +247,7 @@ export default function ChartBoard({ chart, onStarSelect, onPalaceSelect, onSiHu
         ].map(({ h, c }) => (
           <span key={h} className={`border px-1.5 py-0.5 rounded-full font-medium ${c}`}>{h}</span>
         ))}
-        <span className="px-1.5 py-0.5 rounded-full" style={{ color: 'var(--t-faint)', border: '1px solid var(--t-border)' }}>
+        <span className="px-1.5 py-0.5 rounded-full" style={{ color: 'var(--tx-3)', border: '1px solid var(--bdr-med)' }}>
           点击宫位看三方四正
         </span>
       </motion.div>

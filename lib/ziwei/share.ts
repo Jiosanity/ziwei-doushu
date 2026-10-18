@@ -1,50 +1,20 @@
 import type { BirthFormState } from '@/components/BirthForm';
 import type { BirthInfo } from './types';
 
-/** 根据北京时间 + 经度计算真太阳时时辰支 (0-11) */
-export function calcTrueSolarBranch(clockHour: number, clockMinute: number, longitude: number): number {
-  const clockMins = clockHour * 60 + clockMinute;
-  const offset = (longitude - 120) * 4;
-  const solar = ((clockMins + offset) % 1440 + 1440) % 1440;
-  if (solar >= 1380 || solar < 60) return 0;
-  return Math.floor((solar - 60) / 120) + 1;
-}
+import { calculateTrueSolarTime, resolveZiweiDayOffset, shiftGregorianDate } from './true-solar-time';
 
-/** BirthFormState → BirthInfo
- *
- * 子时规则（倪海厦体系/三合派标准）：
- * · 23:00-23:59 = 晚子时，**按次日**排盘（日期 +1）
- * · 00:00-00:59 = 早子时，按本日排盘
- * 这与「时辰支同为子(0)」并不冲突——子时分早晚两段，需要在日期上区分。
- */
+/** 与表单共用的真太阳时、跨日和晚子时口径。 */
 export function formToBirthInfo(form: BirthFormState): BirthInfo {
-  let y = parseInt(form.year) || 0;
-  let m = parseInt(form.month) || 0;
-  let d = parseInt(form.day) || 0;
-
-  // 晚子时（23:00-23:59）按次日处理：用 Date 对象自动处理月末/年末进位
-  if (!form.unknownTime) {
-    const clockHour = parseInt(form.clockHour) || 0;
-    if (clockHour === 23 && y > 0 && m > 0 && d > 0) {
-      const next = new Date(y, m - 1, d + 1);
-      y = next.getFullYear();
-      m = next.getMonth() + 1;
-      d = next.getDate();
-    }
-  }
-
-  const hour = form.unknownTime
-    ? 0
-    : calcTrueSolarBranch(parseInt(form.clockHour) || 0, parseInt(form.clockMinute) || 0, form.longitude);
-  return {
-    year: y, month: m, day: d,
-    hour,
-    gender: form.gender,
-    name: form.name || undefined,
-    province: form.province || undefined,
-    city: form.city || undefined,
-    longitude: form.province ? form.longitude : undefined,
-  };
+  const original = { year: Number(form.year), month: Number(form.month), day: Number(form.day) };
+  const clockHour = Number(form.clockHour) || 0;
+  const clockMinute = Number(form.clockMinute) || 0;
+  const longitude = form.province ? form.longitude : undefined;
+  const solar = calculateTrueSolarTime({ ...original, clockHour, clockMinute, longitude });
+  const date = form.unknownTime ? original : shiftGregorianDate(original, resolveZiweiDayOffset(solar));
+  return { ...date, hour: form.unknownTime ? 0 : solar.branch, gender: form.gender,
+    timeUnknown: form.unknownTime, name: form.name || undefined, province: form.province || undefined,
+    city: form.city || undefined, longitude,
+    origInput: form.unknownTime ? undefined : { ...original, clockHour, clockMinute } };
 }
 
 /** BirthFormState → URLSearchParams（用于分享链接） */

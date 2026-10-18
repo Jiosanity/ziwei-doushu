@@ -1,0 +1,63 @@
+.birth-form {
+  --bf-card: #fffefa;
+  --bf-label: #6c655b;
+  --bf-input-bg: #fffefa;
+  --bf-input-border: rgba(43,38,32,.18);
+  --bf-input-fg: #2b2620;
+  --bf-muted: #81796e;
+  --bf-panel-bg: #f8f7f3;
+  --bf-emphasis: #75603a;
+  background: var(--bf-card);
+  border: 1px solid var(--bf-input-border);
+  border-radius: 24px;
+  padding: 28px;
+  color: var(--bf-input-fg);
+  box-shadow: 0 14px 38px rgba(43,38,32,.06), 0 2px 8px rgba(43,38,32,.025);
+}
+[data-theme="dark"] .birth-form {
+  --bf-card: #17191b;
+  --bf-label: #c3beb5;
+  --bf-input-bg: #202225;
+  --bf-input-border: rgba(255,255,255,.16);
+  --bf-input-fg: #f2eee7;
+  --bf-muted: #aaa49b;
+  --bf-panel-bg: #1c1e20;
+  --bf-emphasis: #d4b16a;
+}
+.birth-form-title { margin: 0 0 24px; font-size: 17px; font-weight: 600; text-align: center; letter-spacing: .08em; }
+.birth-form-field { margin-bottom: 16px; }
+.birth-form-field > label { display: block; color: var(--bf-label); font-size: 12px; margin-bottom: 7px; letter-spacing: .05em; }
+.birth-form input[type="text"], .birth-form select {
+  background: var(--bf-input-bg); border: 1px solid var(--bf-input-border); color: var(--bf-input-fg);
+  border-radius: 14px; padding: 11px 12px; font-size: 14px; width: 100%; min-width: 0; min-height: 44px;
+  box-sizing: border-box; outline: none; transition: border-color .2s; font-family: inherit;
+}
+.birth-form select { cursor: pointer; }
+.birth-form select option { background: var(--bf-input-bg); color: var(--bf-input-fg); }
+.birth-form input::placeholder { color: var(--bf-muted); }
+.birth-form input:focus, .birth-form select:focus { border-color: var(--bf-emphasis); }
+.birth-form :focus-visible { outline: 2px solid var(--bf-emphasis); outline-offset: 3px; }
+.birth-form select[aria-invalid="true"] { border-color: #c53e37; }
+.birth-form select:disabled { opacity: .45; cursor: default; }
+.birth-form-date { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px; }
+.birth-form-pair { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px; }
+.birth-form-error { margin-top: 5px; font-size: 11px; color: #c53e37; }
+.birth-form-time { padding: 12px; border-radius: 16px; border: 1px solid var(--bf-input-border); background: var(--bf-panel-bg); transition: opacity .2s; }
+.birth-form-time.is-disabled { opacity: .45; }
+.birth-form-readout { display: flex; align-items: center; gap: 10px; padding-top: 8px; min-width: 0; color: var(--bf-emphasis); }
+.birth-form-readout svg { flex: none; }
+.birth-form-readout div { font-size: 12px; line-height: 1.9; color: var(--bf-muted); }
+.birth-form-readout strong { color: var(--bf-emphasis); font-size: 15px; font-weight: 600; letter-spacing: .08em; }
+.birth-form-field > .birth-form-checkbox { display: flex; align-items: flex-start; gap: 7px; margin: 9px 0 0; color: var(--bf-muted); font-size: 11px; line-height: 1.7; letter-spacing: 0; cursor: pointer; }
+.birth-form-checkbox input { width: 14px; height: 14px; flex: none; margin-top: 2px; accent-color: var(--bf-input-fg); }
+.birth-form-hint { font-size: 11px; color: var(--bf-muted); margin: 6px 0 0; line-height: 1.6; }
+.birth-form-gender-field { margin-bottom: 20px; }
+.birth-form-gender { border: 1px solid var(--bf-input-border); border-radius: 14px; padding: 11px; min-height: 44px; font-size: 14px; font-weight: 500; color: var(--bf-muted); background: var(--bf-input-bg); cursor: pointer; transition: background .2s, border-color .2s; }
+.birth-form-gender.male.is-on { color: #41728a; border-color: rgba(65,114,138,.6); background: rgba(65,114,138,.08); }
+.birth-form-gender.female.is-on { color: #a05a65; border-color: rgba(160,90,101,.6); background: rgba(160,90,101,.08); }
+.birth-form-submit { width: 100%; padding: 14px; border-radius: 999px; font-size: 14px; font-weight: 600; letter-spacing: .04em; border: 1px solid #24211c; color: #fffefa; background: #24211c; cursor: pointer; transition: opacity .2s, transform .2s; }
+.birth-form-submit:hover { opacity: .85; }
+.birth-form-submit:active { transform: scale(.99); }
+.birth-form-submit:disabled { opacity: .5; cursor: wait; }
+[data-theme="dark"] .birth-form-submit { background: #eee9df; color: #24211c; border-color: #eee9df; }
+@media (max-width: 600px) { .birth-form { padding: 22px 18px; } .birth-form-readout { gap: 7px; } }

@@ -9,9 +9,9 @@
   --font-mono: 'SF Mono', 'Menlo', 'Noto Sans Mono', 'Consolas', monospace;
 
   /* 背景层级 */
-  --bg-0: #FAFAF9;
-  --bg-1: #F4F3EF;
-  --bg-2: #ECEAE4;
+  --bg-0: #FFFFFF;
+  --bg-1: #F5F5F5;
+  --bg-2: #EBEBEB;
   --bg-inv: #0D0D0B;
 
   /* 文字层级 */
@@ -23,10 +23,10 @@
   --tx-inv2: rgba(240,237,232,0.65);
 
   /* 唯一强调色：墨金 */
-  --ac:     #B8922A;
-  --ac-dim: #7A5F1A;
-  --ac-bg:  rgba(184,146,42,0.07);
-  --ac-bdr: rgba(184,146,42,0.22);
+  --ac:     #000000;
+  --ac-dim: #333333;
+  --ac-bg:  rgba(0,0,0,0.04);
+  --ac-bdr: rgba(0,0,0,0.16);
 
   /* 四化语义色（仅用于命盘数据，不用于UI装饰） */
   --lu:   #2D7A4A;
@@ -47,7 +47,7 @@
 
   /* 卡片/内容块背景 */
   --bg-card: #FFFFFF;
-  --bg-page: #fbf6e8;
+  --bg-page: #FFFFFF;
 
   /* 圆角 */
   --r-xs:  4px;
@@ -60,9 +60,9 @@
 
 /* ─── 暗色模式 Token 覆盖 ──────────────────────────────── */
 [data-theme="dark"] {
-  --bg-0: #020810;
-  --bg-1: #0a1020;
-  --bg-2: #141e30;
+  --bg-0: #0e1016;
+  --bg-1: #14171e;
+  --bg-2: #1b2029;
   --bg-inv: #f0ede8;
 
   --tx-0: #e8eef6;
@@ -72,10 +72,10 @@
   --tx-inv: #0d0d0b;
   --tx-inv2: rgba(13,13,11,0.65);
 
-  --ac:     #d4a843;
-  --ac-dim: #e8c060;
-  --ac-bg:  rgba(212,168,67,0.10);
-  --ac-bdr: rgba(212,168,67,0.25);
+  --ac:     #e8eef6;
+  --ac-dim: #c8d0dc;
+  --ac-bg:  rgba(232,238,246,0.08);
+  --ac-bdr: rgba(232,238,246,0.22);
 
   --bdr:      rgba(255,255,255,0.07);
   --bdr-med:  rgba(255,255,255,0.12);
@@ -87,7 +87,7 @@
   --sh-lg: 0 12px 40px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.4);
 
   --bg-card: rgba(255,255,255,0.04);
-  --bg-page: #020810;
+  --bg-page: #0e1016;
 }
 
 /* ─── 全局基础 ───────────────────────────────────────────── */
@@ -324,9 +324,10 @@ body {
 }
 .chart-workspace {
   flex: 1;
+  min-height: 0;
   overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(420px, 520px) 1fr;
+  grid-template-columns: minmax(400px, 520px) minmax(0, 1fr);
 }
 .chart-workspace-left {
   border-right: 1px solid var(--bdr);
@@ -336,7 +337,7 @@ body {
 }
 .chart-workspace-right {
   overflow-y: auto;
-  background: var(--bg-1);
+  background: var(--bg-0);
 }
 
 .chart-topbar {
@@ -406,7 +407,7 @@ body {
 
   /* 命盘宫格：紧凑 */
   .palace-cell {
-    min-height: 74px !important;
+    min-height: 140px !important;
     padding: 6px 5px 5px !important;
   }
   .palace-cell-name { padding-right: 22px !important; }
@@ -418,7 +419,7 @@ body {
 
 /* 极小屏（<360）进一步收紧 */
 @media (max-width: 359px) {
-  .palace-cell { min-height: 68px !important; padding: 5px 4px !important; }
+  .palace-cell { min-height: 136px !important; padding: 5px 4px !important; }
   .chart-workspace-left { padding: 10px 8px 16px; }
   .chart-topbar { padding: 0 8px; gap: 6px; }
 }

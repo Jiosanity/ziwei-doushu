@@ -1,212 +1,110 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import type { ZiweiChart } from '@/lib/ziwei/types';
+import type { TimeView } from './TimeNav';
+import { readAiStream, boundedAiMessages } from '@/lib/ai-client-stream';
+import './ai-chat.css';
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
+type Message = { role: 'user' | 'assistant'; content: string; interrupted?: boolean };
+type Props = { chart: ZiweiChart; view?: TimeView; year?: number; selectedDaXianIndex?: number };
+const STORAGE = 'ziwei-ai-conversations-v1';
+const MAX_MESSAGES = 16;
+function loadHistory(key: string): Message[] {
+  try {
+    const stored = JSON.parse(localStorage.getItem(STORAGE) || '{}')[key];
+    if (!Array.isArray(stored)) return [];
+    return stored.filter(m => m && ['user', 'assistant'].includes(m.role) && typeof m.content === 'string').slice(-MAX_MESSAGES).map(m => ({ role: m.role, content: m.content.slice(0, 24000), interrupted: !!m.interrupted }));
+  } catch { return []; }
 }
-
-interface ChatPanelProps {
-  chart: ZiweiChart;
+function saveHistory(key: string, messages: Message[]) {
+  try {
+    const old = JSON.parse(localStorage.getItem(STORAGE) || '{}');
+    const entries = Object.entries(old).filter(([k]) => k !== key).slice(-5);
+    localStorage.setItem(STORAGE, JSON.stringify({ ...Object.fromEntries(entries), [key]: messages.slice(-MAX_MESSAGES) }));
+  } catch { /* Private browsing or storage quota: the current conversation still works. */ }
 }
-
-const PRESET_QUESTIONS = [
-  '我的整体命格如何？性格特点是什么？',
-  '我的感情婚姻运势如何？',
-  '我的事业财运如何？适合什么方向？',
-  '我现在的大限运势如何？',
-  '我的健康需要注意什么？',
-  '今年的流年运势如何？',
-];
-
-export default function ChatPanel({ chart }: ChatPanelProps) {
+function RichText({ text }: { text: string }) {
+  return <>{text.split('\n').map((line, i) => {
+    const heading = /^(#{1,4})\s+(.*)$/.exec(line);
+    const content = (heading ? heading[2] : line).split(/(\*\*[^*]+\*\*)/g).map((part, j) => part.startsWith('**') ? <strong key={j}>{part.slice(2, -2)}</strong> : <Fragment key={j}>{part}</Fragment>);
+    return heading ? <h4 key={i}>{content}</h4> : <div className="ai-text-line" key={i}>{content.length ? content : '\u00a0'}</div>;
+  })}</>;
+}
+export default function ChatPanel(props: Props) {
+  const contextKey = JSON.stringify([props.chart.birthInfo, props.chart.lunarInfo, props.chart.mingGongBranch, props.chart.wuxingJu, props.view || 'mingpan', props.year, props.selectedDaXianIndex]);
+  return <Conversation key={contextKey} {...props} contextKey={contextKey} />;
+}
+function Conversation({ chart, view = 'mingpan', year, selectedDaXianIndex, contextKey }: Props & { contextKey: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+  const [status, setStatus] = useState<{ configured: boolean; model: string } | null>(null);
+  const [statusError, setStatusError] = useState(false);
   const [loading, setLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
+  const [error, setError] = useState('');
+  const controller = useRef<AbortController | null>(null);
+  const mounted = useRef(true);
+  const scroll = useRef<HTMLDivElement>(null);
+  const history = useRef<Message[]>([]);
+  const ready = useRef(false);
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  const sendMessage = async (text: string) => {
-    if (!text.trim() || loading) return;
-    const userMsg: Message = { role: 'user', content: text };
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
-    setLoading(true);
-
+    mounted.current = true;
+    const restored = loadHistory(contextKey);
+    history.current = restored;
+    setMessages(restored);
+    ready.current = true;
+    const statusController = new AbortController();
+    fetch('/api/ai/status', { signal: statusController.signal, cache: 'no-store' }).then(async r => {
+      if (!r.ok) throw new Error();
+      const data = await r.json();
+      if (typeof data.configured !== 'boolean') throw new Error();
+      if (mounted.current) setStatus(data);
+    }).catch(() => { if (!statusController.signal.aborted && mounted.current) setStatusError(true); });
+    return () => { mounted.current = false; controller.current?.abort(); statusController.abort(); };
+  }, [contextKey]);
+  const update = (next: Message[]) => {
+    history.current = next.slice(-MAX_MESSAGES);
+    if (ready.current) saveHistory(contextKey, history.current);
+    if (mounted.current) setMessages(history.current);
+  };
+  useEffect(() => { scroll.current?.scrollTo({ top: scroll.current.scrollHeight }); }, [messages, loading]);
+  const run = async (conversation: Message[]) => {
+    if (controller.current || !status?.configured) return;
+    const request = new AbortController();
+    controller.current = request;
+    setLoading(true); setError(''); setInput('');
+    const base = conversation.filter(message => message.content.trim()).slice(-(MAX_MESSAGES - 1));
+    let text = '';
+    update([...base, { role: 'assistant', content: '', interrupted: true }]);
     try {
-      const res = await fetch('/api/interpret', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chart, messages: [...messages, userMsg] }),
+      const response = await fetch('/api/interpret', {
+        method: 'POST', signal: request.signal, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chart, view, year, selectedDaXianIndex, messages: boundedAiMessages(base) }),
       });
-
-      if (res.status === 404) throw new Error('api-missing');
-      if (!res.ok) throw new Error('请求失败');
-      if (!res.body) throw new Error('无响应流');
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let assistantText = '';
-
-      setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') break;
-            try {
-              const parsed = JSON.parse(data);
-              const delta = parsed.delta?.text ?? '';
-              assistantText += delta;
-              setMessages(prev => {
-                const updated = [...prev];
-                updated[updated.length - 1] = { role: 'assistant', content: assistantText };
-                return updated;
-              });
-            } catch { /* skip */ }
-          }
-        }
-      }
+      await readAiStream(response, delta => { text += delta; update([...base, { role: 'assistant', content: text, interrupted: true }]); }, request.signal);
+      if (!text.trim()) throw new Error('模型未返回回答，请重试');
+      update([...base, { role: 'assistant', content: text }]);
     } catch (e) {
-      const missing = e instanceof Error && e.message === 'api-missing';
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: missing ? '开源版不含 AI 解读接口（/api/interpret），需要你自己实现后才能用，详见 README「快速开始」。排盘本身不需要任何 API Key。' : '解读失败，请检查API配置或稍后重试。',
-      }]);
+      update([...base, { role: 'assistant', content: text, interrupted: true }]);
+      if (mounted.current) setError(request.signal.aborted ? '已停止生成，可继续或重新回答。' : e instanceof Error ? e.message : '解读失败，请重试');
     } finally {
-      setLoading(false);
+      controller.current = null;
+      if (mounted.current) setLoading(false);
     }
   };
-
-  return (
-    <div className="flex flex-col h-full rounded-xl overflow-hidden card-glass">
-      {/* 标题 */}
-      <div className="px-4 py-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--t-border)' }}>
-        <h3 className="text-xs font-medium tracking-widest" style={{ color: 'var(--t-gold)' }}>AI 命盘解读</h3>
-        <p className="text-[10px] mt-0.5" style={{ color: 'var(--t-faint)' }}>倪海厦正宗紫微斗数 · 智慧解析</p>
-      </div>
-
-      {/* 消息列表 */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
-        {messages.length === 0 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-8">
-            <div className="text-4xl mb-3" style={{ color: 'var(--t-gold)', opacity: 0.15 }}>✦</div>
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--t-faint)' }}>
-              命盘已生成，可直接提问<br />
-              或从下方选择常见问题开始解读
-            </p>
-          </motion.div>
-        )}
-
-        <AnimatePresence>
-          {messages.map((msg, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className="max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed"
-                style={msg.role === 'user' ? {
-                  background: 'rgba(212,168,67,0.1)',
-                  border: '1px solid rgba(212,168,67,0.2)',
-                  color: 'var(--t-gold)',
-                } : {
-                  background: 'var(--t-card)',
-                  border: '1px solid var(--t-border)',
-                  color: 'var(--t-text)',
-                }}
-              >
-                {msg.role === 'assistant' && (
-                  <div className="text-[10px] mb-1" style={{ color: 'var(--t-faint)' }}>命理师 ·</div>
-                )}
-                <div className="whitespace-pre-wrap text-xs leading-relaxed">
-                  {msg.content}
-                  {loading && i === messages.length - 1 && msg.role === 'assistant' && (
-                    <span className="inline-block w-1.5 h-3 ml-0.5 animate-pulse" style={{ background: 'var(--t-gold)', opacity: 0.6 }} />
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-
-      {/* 预设问题 */}
-      {messages.length === 0 && (
-        <div className="px-3 pb-2 flex-shrink-0">
-          <div className="grid grid-cols-2 gap-1.5">
-            {PRESET_QUESTIONS.map((q, i) => (
-              <button
-                key={i}
-                onClick={() => sendMessage(q)}
-                disabled={loading}
-                className="text-left text-[10px] rounded-lg px-2.5 py-2 transition-all line-clamp-2"
-                style={{
-                  color: 'var(--t-text2)',
-                  border: '1px solid var(--t-border)',
-                  background: 'transparent',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = 'rgba(212,168,67,0.3)';
-                  e.currentTarget.style.color = 'var(--t-gold)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = 'var(--t-border)';
-                  e.currentTarget.style.color = 'var(--t-text2)';
-                }}
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 输入框 */}
-      <div className="px-3 pb-3 pt-2 flex-shrink-0" style={{ borderTop: '1px solid var(--t-border)' }}>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
-            placeholder="输入问题，如：我的感情运势如何？"
-            disabled={loading}
-            className="flex-1 rounded-lg px-3 py-2 text-xs focus:outline-none transition-colors"
-            style={{
-              background: 'var(--t-card)',
-              border: '1px solid var(--t-border)',
-              color: 'var(--t-text)',
-            }}
-          />
-          <button
-            onClick={() => sendMessage(input)}
-            disabled={loading || !input.trim()}
-            className="px-3 py-2 rounded-lg text-xs font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-            style={{
-              background: 'rgba(212,168,67,0.15)',
-              border: '1px solid rgba(212,168,67,0.25)',
-              color: 'var(--t-gold)',
-            }}
-          >
-            解读
-          </button>
-        </div>
-      </div>
+  const send = (text: string) => { if (text.trim() && text.length <= 2000) void run([...history.current, { role: 'user', content: text.trim() }]); };
+  const last = messages[messages.length - 1];
+  const suggestions = view === 'liunian' ? [`${year || '今年'}年的重点是什么？`, '今年事业与财运如何？', '这一年有哪些关系变化？'] : view === 'daxian' ? ['这步大限的重点是什么？', '这十年事业如何发展？', '这步大限与本命如何配合？'] : ['分析我的命格与性格', '事业与财运适合什么方向？', '感情与婚姻有哪些特点？', '请解释命盘中的四化'];
+  return <section className="ai-chat" aria-label="AI 问盘">
+    <header className="ai-chat-header"><div><span className="ai-eyebrow">AI CONSULTATION</span><h2>与命盘对话</h2></div><button type="button" disabled={loading || !messages.length} onClick={() => { update([]); setError(''); }}>清空对话</button></header>
+    <div className="ai-context">{view === 'mingpan' ? '本命盘' : view === 'daxian' ? '当前所选大限' : `${year || ''} 流年`} · {status?.configured ? status.model : 'DeepSeek'}</div>
+    {!status?.configured && <p className="ai-service" role="status">{statusError ? '暂时无法确认 AI 服务状态，请刷新后重试。' : status ? 'AI 服务尚未配置密钥，配置完成后即可提问。' : '正在确认 AI 服务状态…'}</p>}
+    <div className="ai-messages" ref={scroll} aria-live="polite" aria-busy={loading}>
+      {!messages.length && <div className="ai-empty"><span>✳</span><h3>从你关心的事开始</h3><p>结合当前命盘、运限与十三维解读，逐步展开。</p><div className="ai-suggestions">{suggestions.map(q => <button type="button" key={q} disabled={!status?.configured || loading} onClick={() => send(q)}>{q}<span>↗</span></button>)}</div></div>}
+      {messages.map((message, index) => <article key={index} className={`ai-message ai-message-${message.role}`}><div className="ai-message-role">{message.role === 'user' ? '你' : 'AI 解读'}</div><RichText text={message.content || (loading && index === messages.length - 1 ? '正在思考…' : '尚未生成回答')} />{message.interrupted && !(loading && index === messages.length - 1) && <small>回答未完成</small>}</article>)}
     </div>
-  );
+    {error && <p className="ai-error" role="alert">{error}</p>}
+    {!loading && last?.role === 'assistant' && <div className="ai-actions"><button type="button" disabled={!status?.configured} onClick={() => void run(messages.slice(0, -1))}>重新回答</button>{last.interrupted && last.content && <button type="button" disabled={!status?.configured} onClick={() => send('请从上次中断处继续回答，不要重复已有内容。')}>继续回答</button>}</div>}
+    <form className="ai-composer" onSubmit={event => { event.preventDefault(); send(input); }}><textarea aria-label="向命盘提问" maxLength={2000} rows={3} value={input} disabled={loading || !status?.configured} onChange={event => setInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(input); } }} placeholder="写下你想了解的问题…" /><div><span>{input.length}/2000 · Shift + Enter 换行</span>{loading ? <button type="button" onClick={() => controller.current?.abort()}>停止生成</button> : <button type="submit" disabled={!status?.configured || !input.trim()}>发送 ↗</button>}</div></form>
+    <p className="ai-footnote">仅在发送问题时，将当前命盘、相关解读及本轮对话发送给所配置的模型。对话保存在此浏览器，可随时清空。</p>
+  </section>;
 }

@@ -23,7 +23,7 @@ export default function FamousPersonCard({ person }: { person: FamousPerson }) {
         background: `linear-gradient(135deg, ${catColor}06, transparent 60%)`,
       }}
     >
-      <div className="text-[10px] tracking-widest mb-3 flex items-center gap-2" style={{ color: 'var(--t-faint)' }}>
+      <div className="text-[10px] tracking-widest mb-3 flex items-center gap-2" style={{ color: 'var(--tx-3)' }}>
         <span style={{ color: catColor, opacity: 0.9, fontSize: '12px' }}>★</span>
         名人命盘
         <span className="text-[9px] px-2 py-0.5 rounded-full ml-auto"
@@ -34,21 +34,21 @@ export default function FamousPersonCard({ person }: { person: FamousPerson }) {
 
       <div className="space-y-2.5">
         <div className="flex items-baseline gap-3 flex-wrap">
-          <span className="text-base font-semibold" style={{ color: 'var(--t-text1)', letterSpacing: '0.02em' }}>
+          <span className="text-base font-semibold" style={{ color: 'var(--tx-1)', letterSpacing: '0.02em' }}>
             {person.name}
           </span>
-          <span className="text-[11px]" style={{ color: 'var(--t-faint)' }}>
+          <span className="text-[11px]" style={{ color: 'var(--tx-3)' }}>
             {person.year}年 · {person.gender === 'male' ? '男命' : '女命'}
           </span>
         </div>
 
-        <div className="text-[11px]" style={{ color: 'var(--t-text2)', opacity: 0.85 }}>
+        <div className="text-[11px]" style={{ color: 'var(--tx-2)', opacity: 0.85 }}>
           {person.description}
         </div>
 
         <div className="text-[11px] leading-relaxed px-3 py-2.5 rounded-md"
           style={{
-            color: 'var(--t-text2)',
+            color: 'var(--tx-2)',
             background: catColor + '0c',
             border: `1px solid ${catColor}25`,
           }}>
@@ -56,7 +56,7 @@ export default function FamousPersonCard({ person }: { person: FamousPerson }) {
           {person.notable}
         </div>
 
-        <div className="text-[10px] mt-2" style={{ color: 'var(--t-faint)', opacity: 0.6, lineHeight: 1.5 }}>
+        <div className="text-[10px] mt-2" style={{ color: 'var(--tx-3)', opacity: 0.6, lineHeight: 1.5 }}>
           ⚠️ 出生时辰为公开文献估算值，仅供研究参考。下方 AI 解读基于此命盘自动生成，与本人无关。
         </div>
       </div>

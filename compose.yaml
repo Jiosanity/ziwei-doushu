@@ -11,6 +11,9 @@ services:
     environment:
       TZ: Asia/Shanghai
       DATASET_DB_PATH: /data/readings.sqlite
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-flash}
     volumes:
       - ${DATASET_DIR:-/opt/ziwei-data/v4}:/data:ro
     logging:

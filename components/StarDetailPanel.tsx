@@ -192,9 +192,9 @@ export default function StarDetailPanel({ star, palaceName, onClose }: StarDetai
           className="card-glass rounded-xl overflow-hidden"
         >
           {/* 标题栏 */}
-          <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--t-border)' }}>
+          <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--bdr-med)' }}>
             <div className="flex items-center gap-2">
-              <span className="text-xl font-bold" style={{ color: 'var(--t-gold)' }}>{star.name}</span>
+              <span className="text-xl font-bold" style={{ color: 'var(--ac)' }}>{star.name}</span>
               {typeConfig && (
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${typeConfig.color}`}>
                   {typeConfig.label}
@@ -206,7 +206,7 @@ export default function StarDetailPanel({ star, palaceName, onClose }: StarDetai
                 </span>
               )}
             </div>
-            <button onClick={onClose} className="transition-colors text-lg leading-none" style={{ color: 'var(--t-faint)' }}>×</button>
+            <button onClick={onClose} className="transition-colors text-lg leading-none" style={{ color: 'var(--tx-3)' }}>×</button>
           </div>
 
           <div className="p-4 space-y-4 overflow-y-auto max-h-[560px]">
@@ -221,8 +221,8 @@ export default function StarDetailPanel({ star, palaceName, onClose }: StarDetai
                 ].map(tag => (
                   <div key={tag} className="text-[10px] px-2 py-1 rounded-full"
                     style={{
-                      border: '1px solid var(--t-border)',
-                      color: tag.includes('庙旺') ? '#eab308' : tag.includes('落陷') ? '#ef4444' : 'var(--t-text2)',
+                      border: '1px solid var(--bdr-med)',
+                      color: tag.includes('庙旺') ? '#eab308' : tag.includes('落陷') ? '#ef4444' : 'var(--tx-2)',
                     }}>
                     {tag}
                   </div>
@@ -233,11 +233,11 @@ export default function StarDetailPanel({ star, palaceName, onClose }: StarDetai
             {/* 关键词 */}
             {desc && (
               <div>
-                <div className="text-[10px] tracking-widest mb-1.5" style={{ color: 'var(--t-faint)' }}>星曜特质</div>
+                <div className="text-[10px] tracking-widest mb-1.5" style={{ color: 'var(--tx-3)' }}>星曜特质</div>
                 <div className="flex flex-wrap gap-1.5">
                   {desc.keywords.split('·').map(k => (
                     <span key={k} className="text-[11px] px-2 py-0.5 rounded-full"
-                      style={{ color: 'var(--t-gold)', border: '1px solid rgba(212,168,67,0.2)', background: 'rgba(212,168,67,0.06)' }}>
+                      style={{ color: 'var(--ac)', border: '1px solid rgba(212,168,67,0.2)', background: 'rgba(212,168,67,0.06)' }}>
                       {k.trim()}
                     </span>
                   ))}
@@ -248,10 +248,10 @@ export default function StarDetailPanel({ star, palaceName, onClose }: StarDetai
             {/* 古书原文 */}
             {detail && (
               <div className="rounded-xl p-3" style={{ background: 'rgba(212,168,67,0.04)', border: '1px solid rgba(212,168,67,0.12)' }}>
-                <div className="text-[10px] tracking-widest mb-1.5 flex items-center gap-1" style={{ color: 'var(--t-gold)', opacity: 0.7 }}>
+                <div className="text-[10px] tracking-widest mb-1.5 flex items-center gap-1" style={{ color: 'var(--ac)', opacity: 0.7 }}>
                   古书原文
                 </div>
-                <p className="text-[11px] leading-relaxed italic" style={{ color: 'var(--t-gold)', opacity: 0.8 }}>{detail.classical}</p>
+                <p className="text-[11px] leading-relaxed italic" style={{ color: 'var(--ac)', opacity: 0.8 }}>{detail.classical}</p>
               </div>
             )}
 
@@ -259,12 +259,12 @@ export default function StarDetailPanel({ star, palaceName, onClose }: StarDetai
             {detail && (
               <>
                 <div>
-                  <div className="text-[10px] tracking-widest mb-1.5 flex items-center gap-1.5" style={{ color: 'var(--t-faint)' }}>
-                    <span className="w-3 h-px inline-block" style={{ background: 'var(--t-border-acc)' }} />
+                  <div className="text-[10px] tracking-widest mb-1.5 flex items-center gap-1.5" style={{ color: 'var(--tx-3)' }}>
+                    <span className="w-3 h-px inline-block" style={{ background: 'var(--ac-bdr)' }} />
                     倪海厦老师解读
-                    <span className="w-3 h-px inline-block" style={{ background: 'var(--t-border-acc)' }} />
+                    <span className="w-3 h-px inline-block" style={{ background: 'var(--ac-bdr)' }} />
                   </div>
-                  <p className="text-xs leading-relaxed" style={{ color: 'var(--t-text2)' }}>{detail.niHaixia}</p>
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--tx-2)' }}>{detail.niHaixia}</p>
                 </div>
 
                 <div className="grid grid-cols-1 gap-2">
@@ -275,11 +275,11 @@ export default function StarDetailPanel({ star, palaceName, onClose }: StarDetai
                     { label: '健康提示', value: detail.health, icon: '☯' },
                   ].map(item => (
                     <div key={item.label} className="card-inner rounded-lg p-3">
-                      <div className="text-[10px] mb-1 flex items-center gap-1" style={{ color: 'var(--t-faint)' }}>
+                      <div className="text-[10px] mb-1 flex items-center gap-1" style={{ color: 'var(--tx-3)' }}>
                         <span>{item.icon}</span>
                         <span>{item.label}</span>
                       </div>
-                      <p className="text-[11px] leading-relaxed" style={{ color: 'var(--t-text2)' }}>{item.value}</p>
+                      <p className="text-[11px] leading-relaxed" style={{ color: 'var(--tx-2)' }}>{item.value}</p>
                     </div>
                   ))}
                 </div>
@@ -299,7 +299,7 @@ export default function StarDetailPanel({ star, palaceName, onClose }: StarDetai
 
             {/* 辅星/煞星说明 */}
             {!detail && star.type !== 'major' && (
-              <div className="text-xs leading-relaxed" style={{ color: 'var(--t-text2)' }}>
+              <div className="text-xs leading-relaxed" style={{ color: 'var(--tx-2)' }}>
                 {star.type === 'lucky' && (
                   <>
                     {star.name === '文昌' && '文昌入宫，主学业考试顺利，文书印鉴有利，宜从事文字相关工作。古诀：「文昌科甲，主文章显达，逢考必第。」'}
